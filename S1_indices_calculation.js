@@ -12,6 +12,7 @@ workflow:
 var aoi = ee.FeatureCollection('users/krizovakk/COV_32633')
 
 Map.addLayer(aoi)
+Map.centerObject(aoi)
 
 // SENTINEL-1 COLLECTIONS
 
@@ -32,7 +33,9 @@ var dsc = ee.ImageCollection('COPERNICUS/S1_GRD')
 print(dsc, 'Sentinel-1 DSC collection');
 
 // CALCULATE RVI4S1 RADAR INDEX
+
 // formula:  (4xVH)/(VV+VH)
+// must be in linear units !!! -> conversion formula: 10^((valueINdb)/10) DONE
 
 // ascending path
 
@@ -40,7 +43,7 @@ var calculateRVI = function(asc) {
   // get a string representation of the date.
   var dateString = ee.Date(asc.get('system:time_start')).format('yyyyMMdd');
   var selected = asc.select('VH', 'VV');
-  var rvi = selected.expression('4*b(0)/(b(1)+b(0))');
+  var rvi = selected.expression('4*(10**((b(0))/10))/((10**((b(1))/10))+(10**((b(0))/10)))'); // formula for db2linear conversion incorporated
   return rvi.rename(dateString);
 };
 
@@ -74,7 +77,7 @@ var calculateRVI = function(dsc) {
   // get a string representation of the date.
   var dateString = ee.Date(dsc.get('system:time_start')).format('yyyyMMdd');
   var selected = dsc.select('VH', 'VV');
-  var rvi = selected.expression('4*b(0)/(b(1)+b(0))');
+  var rvi = selected.expression('4*(10**((b(0))/10))/((10**((b(1))/10))+(10**((b(0))/10)))');
   return rvi.rename(dateString);
 };
 
