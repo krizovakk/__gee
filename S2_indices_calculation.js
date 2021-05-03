@@ -17,11 +17,14 @@ var geom = ee.FeatureCollection('users/krizovakk/bacina21_point')
 Map.addLayer(aoi)
 Map.addLayer(geom)
 
+Map.centerObject(aoi)
+
 // SENTINEL2 L2A COLLECTION
 
 var collection = ee.ImageCollection("COPERNICUS/S2_SR") // S2_SR = L2A level
   .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", 10))
   .filterDate("2020-03-1", "2020-08-31")
+  .filter(ee.Filter.calendarRange(3,7, 'month')) // filter only months march to july
   .filterBounds(aoi)
 
 print(collection, 'S2collection');
