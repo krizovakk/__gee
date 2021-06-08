@@ -7,59 +7,39 @@ NeOsol
 RS data: S2: NDVI, NDWI, LAI
 */
 
+// ROI
 
-var geom = ee.FeatureCollection('users/krizovakk/slovec')
+var geom = ee.FeatureCollection('users/krizovakk/sust_slovec_polygon')
 
-// Map.addLayer(pt); // adds points to iteractive map
 Map.addLayer(geom)
 Map.centerObject(geom)
+
+// REDUCERS
+
+var reducers = ee.Reducer.mean().combine({
+  reducer2: ee.Reducer.stdDev(),
+  sharedInputs: true
+});
+
+var meansd = function(scene) {
+   var reduced = scene.reduceRegions({
+    collection: geom,
+    reducer: reducers,
+    });
+  return reduced;
+};
 
 // SENTINEL2 L2A COLLECTION
 
 var collection = ee.ImageCollection("COPERNICUS/S2_SR") // S2_SR = L2A level
   .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", 10))
-  .filterDate("2015-04-1", "2020-08-31")
+  .filterDate("2017-04-1", "2020-08-31")
+  .filter(ee.Filter.calendarRange(3,8, 'month'))
   .filterBounds(geom)
-  //.map(maskS2clouds);// 15 elements
 
-print(collection);
+print(collection, 'basic collection');
 
-// RGB composite
-
-var generate_rgb = function(scene) {
-  var dateString = ee.Date(scene.get('system:time_start')).format('yyyyMMdd');
-  var selected = scene.select(['B2', 'B3', 'B4']);
-  var rgb = selected.expression('b(2)+b(1)+b(0)');
-  return rgb.rename(dateString);
-};
-
-var RGBcollection = collection.map(generate_rgb);
-
-print(RGBcollection, 'RGBcollection')
-
-// STACK BASIC COLLECTION
-
-var stackCollection = function(collection) {
-  var first = ee.Image(collection.first()).select([]);
-  var appendBands = function(image, previous) {
-    return ee.Image(previous).addBands(image);
-  };
-  return ee.Image(collection.iterate(appendBands, first));
-};
-var stacked = stackCollection(RGBcollection);
-print('stacked', stacked);
-
-Map.addLayer(stacked.select(0).clip(geom), {min:-1, max:1}, 'stacked');
-
-Export.image.toDrive({
- image: stacked,
- description: 'basic',
- scale: 10,
- region: geom,
- maxPixels: 1e9
-});
-
-// CALCULATE NDVI
+// NDVI
 
 var calculateNDVI = function(scene) {
   // get a string representation of the date.
@@ -72,7 +52,22 @@ var NDVIcollection = collection.map(calculateNDVI);
 
 print(NDVIcollection, 'NDVIcollection')
 
-// STACK
+// reduce NDVI
+
+var NDVImeansd = NDVIcollection.map(meansd);
+
+var fNDVImeansd = NDVImeansd.flatten()
+
+print(fNDVImeansd, 'NDVI reduced')
+
+Export.table.toDrive({
+  collection: fNDVImeansd,
+  description: 'NDVImeansd',
+  folder: 'ee',
+  fileFormat: 'CSV'
+});
+
+// stack NDVI
 
 var stackCollection = function(collection) {
   var first = ee.Image(collection.first()).select([]);
@@ -81,12 +76,14 @@ var stackCollection = function(collection) {
   };
   return ee.Image(collection.iterate(appendBands, first));
 };
+
 var stackedNDVI = stackCollection(NDVIcollection);
-print('stackedNDVI', stackedNDVI);
+
+print('stacked NDVI', stackedNDVI);
 
 Map.addLayer(stackedNDVI.select(0).clip(geom), {min:-1, max:1}, 'stackedNDVI');
 
-// EXPORT STACKED
+// export NDVI
 
 Export.image.toDrive({
  image: stackedNDVI,
@@ -96,7 +93,7 @@ Export.image.toDrive({
  maxPixels: 1e9
 });
 
-// CALCULATE NDWI
+// NDWI
 
 var calculateNDWI = function(scene) {
   // get a string representation of the date.
@@ -111,14 +108,29 @@ var NDWIcollection = collection.map(calculateNDWI);
 
 print(NDWIcollection, 'NDWI collection')
 
-// STACK
+// reduce NDWI
+
+var NDWImeansd = NDWIcollection.map(meansd);
+
+var fNDWImeansd = NDWImeansd.flatten()
+
+print(fNDWImeansd, 'NDWI reduced')
+
+Export.table.toDrive({
+  collection: fNDVImeansd,
+  description: 'NDVImeansd',
+  folder: 'ee',
+  fileFormat: 'CSV'
+});
+
+// stack NDWI
 
 var stackedNDWI = stackCollection(NDWIcollection);
 print('stackedNDWI', stackedNDWI);
 
-Map.addLayer(stackedNDWI.select(0).clip(geom), {min:-1, max:1}, 'stackedNDWI');
+//Map.addLayer(stackedNDWI.select(0).clip(geom), {min:-1, max:1}, 'stackedNDWI');
 
-// EXPORT STACKED
+// export NDWI
 
 Export.image.toDrive({
  image: stackedNDWI,
@@ -128,7 +140,7 @@ Export.image.toDrive({
  maxPixels: 1e9
 });
 
-// CALCULATE LAI
+// LAI
 
 var calculateLAI = function(scene) {
   // get a string representation of the date.
@@ -143,14 +155,30 @@ var LAIcollection = collection.map(calculateLAI);
 
 print(LAIcollection, 'LAI collection')
 
-// STACK
+// reduce NDWI
+
+var LAImeansd = LAIcollection.map(meansd);
+
+var fLAImeansd = LAImeansd.flatten()
+
+print(fLAImeansd, 'LAI reduced')
+
+Export.table.toDrive({
+  collection: fLAImeansd,
+  description: 'LAImeansd',
+  folder: 'ee',
+  fileFormat: 'CSV'
+});
+
+// stack LAI
 
 var stackedLAI = stackCollection(LAIcollection);
+
 print('stackedLAI', stackedLAI);
 
-Map.addLayer(stackedLAI.select(0).clip(geom), {min:-1, max:1}, 'stackedLAI');
+//Map.addLayer(stackedLAI.select(0).clip(geom), {min:-1, max:1}, 'stackedLAI');
 
-// EXPORT STACKED
+// export LAI
 
 Export.image.toDrive({
  image: stackedLAI,
