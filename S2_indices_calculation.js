@@ -7,16 +7,14 @@ workflow:
   calculate specific index over entire collection,
   stack all dates in a single multiband image,
   export image to Google Drive
+  reduce information within shp (resp. variants) to a csv (mean and standard deviation)
 */
 
 // IMPORT AOIs
 
-var aoi = ee.FeatureCollection('users/krizovakk/bacina21_polygon')
-var geom = ee.FeatureCollection('users/krizovakk/bacina21_point')
+var aoi = ee.FeatureCollection('')
 
 Map.addLayer(aoi)
-Map.addLayer(geom)
-
 Map.centerObject(aoi)
 
 // SENTINEL2 L2A COLLECTION
@@ -29,7 +27,9 @@ var collection = ee.ImageCollection("COPERNICUS/S2_SR") // S2_SR = L2A level
 
 print(collection, 'S2collection');
 
-// CALCULATE NDVI
+// NDVI
+
+// calculate
 
 var calculateNDVI = function(scene) {
   // get a string representation of the date.
@@ -66,7 +66,37 @@ Export.image.toDrive({
  maxPixels: 1e9
 });
 
-// CALCULATE NDWI
+// reducers (mean and stdev)
+
+var reducers = ee.Reducer.mean().combine({
+  reducer2: ee.Reducer.stdDev(),
+  sharedInputs: true
+});
+
+var meansd = function(scene) {
+   var reduced = scene.reduceRegions({
+    collection: aoi,
+    reducer: reducers,
+    });
+  return reduced;
+};
+
+var NDVImeansd = NDVIcollection.map(meansd);
+
+print(NDVImeansd, 'NDVImeansd')
+
+var flatndvisd = NDVImeansd.flatten()
+print(flatndvisd, 'list to export')
+
+Export.table.toDrive({
+  collection: flatndvisd,
+  description: 'NDVImeansd',
+  fileFormat: 'CSV'
+});
+
+// NDWI
+
+// calculate
 
 var calculateNDWI = function(scene) {
   // get a string representation of the date.
@@ -98,7 +128,37 @@ Export.image.toDrive({
  maxPixels: 1e9
 });
 
-// CALCULATE LAI
+// reducers (mean and stdev)
+
+var reducers = ee.Reducer.mean().combine({
+  reducer2: ee.Reducer.stdDev(),
+  sharedInputs: true
+});
+
+var meansd = function(scene) {
+   var reduced = scene.reduceRegions({
+    collection: aoi,
+    reducer: reducers,
+    });
+  return reduced;
+};
+
+var NDWImeansd = NDWIcollection.map(meansd);
+
+print(NDWImeansd, 'NDWImeansd')
+
+var flatndwisd = NDWImeansd.flatten()
+print(flatndwisd, 'list to export')
+
+Export.table.toDrive({
+  collection: flatndwisd,
+  description: 'NDWImeansd',
+  fileFormat: 'CSV'
+});
+
+// LAI
+
+// calculate
 
 var calculateLAI = function(scene) {
   // get a string representation of the date.
@@ -128,4 +188,32 @@ Export.image.toDrive({
  scale: 10,
  region: aoi,
  maxPixels: 1e9
+});
+
+// reducers (mean and stdev)
+
+var reducers = ee.Reducer.mean().combine({
+  reducer2: ee.Reducer.stdDev(),
+  sharedInputs: true
+});
+
+var meansd = function(scene) {
+   var reduced = scene.reduceRegions({
+    collection: aoi,
+    reducer: reducers,
+    });
+  return reduced;
+};
+
+var LAImeansd = LAIcollection.map(meansd);
+
+print(LAImean, 'LAImean')
+
+var flatlaisd = LAImeansd.flatten()
+print(flatlaisd, 'list to export')
+
+Export.table.toDrive({
+  collection: flatlaisd,
+  description: 'LAImeansd',
+  fileFormat: 'CSV'
 });
